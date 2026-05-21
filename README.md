@@ -30,6 +30,7 @@ Open `.env` and fill in:
 | `GEMINI_API_KEY` | Yes | Your Gemini API key |
 | `JWT_SECRET` | Yes | Any long random string (used to sign auth tokens) |
 | `ADMIN_USERNAME` | Yes | Username that gets admin access |
+| `ADMIN_PASSWORD` | Yes | Password for the admin account (used once on first run to create it) |
 | `ANTHROPIC_API_KEY` | No | Enables Claude model option in the UI |
 
 Generate a secure `JWT_SECRET`:
@@ -62,7 +63,7 @@ The app will be available at [http://localhost:8000](http://localhost:8000).
 
 ## First login
 
-The admin account is created on first login — just sign in with the username you set in `ADMIN_USERNAME`. From the admin panel you can create accounts for other users.
+On first startup the admin account is created automatically using `ADMIN_USERNAME` and `ADMIN_PASSWORD` from your `.env`. Log in with those credentials — from the admin panel you can create accounts for other users and change your password.
 
 ## Nmap
 

@@ -15,6 +15,7 @@ if not JWT_SECRET:
     raise RuntimeError("JWT_SECRET environment variable is not set.")
 
 ADMIN_USERNAMES = {u.strip() for u in os.getenv("ADMIN_USERNAMES", os.getenv("ADMIN_USERNAME", "")).split(",") if u.strip()}
+ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "")
 
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
 CLAUDE_MODEL_NAME = os.getenv("CLAUDE_MODEL", "claude-sonnet-4-6")
