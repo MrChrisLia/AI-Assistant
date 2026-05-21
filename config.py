@@ -3,7 +3,6 @@ import os
 from dotenv import load_dotenv
 load_dotenv()
 
-ZAP_URL = "http://localhost:8080"
 MODEL_NAME = os.getenv("GEMINI_MODEL", "gemini-3.1-flash-lite")
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")

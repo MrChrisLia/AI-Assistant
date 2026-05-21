@@ -5,16 +5,17 @@ from fastapi import APIRouter, Depends, File, Form, Header, UploadFile
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
-import services.acunetix as acx
 import services.claude as claude_svc
 import services.gemini as gemini_svc
-from config import ANTHROPIC_API_KEY, CLAUDE_MODEL_NAME
+from config import ACUNETIX_ENABLED, ANTHROPIC_API_KEY, CLAUDE_MODEL_NAME
+
+if ACUNETIX_ENABLED:
+    import services.acunetix as acx
 from database import get_db
 from models import ChatSession, Message, User
 from services.auth import get_current_user
 from services.gemini import decide_action
 from services.nmap import run_nmap, sanitize_nmap_flags, validate_target
-from services.zap import get_results, zap_scan
 
 router = APIRouter()
 
@@ -178,46 +179,6 @@ def _agent_stream(prompt, session_id_in, model, attachments, user, db, api_key=N
             yield from _static(run_nmap(target, sanitize_nmap_flags(flags_raw)), "nmap", session, db, prompt)
         return
 
-    # ── ZAP scan ──
-    if action == "scan":
-        target = (action_data.get("target") or "").strip()
-        if not target:
-            yield from _static("No target URL provided for ZAP scan.", "zap", session, db, prompt, error=True)
-        else:
-            try:
-                zap_scan(target)
-                yield from _static(f"Started ZAP scan on {target}.", "zap", session, db, prompt)
-            except Exception as e:
-                yield from _static(f"ZAP error: {e}\n\nMake sure OWASP ZAP is running on port 8080.", "zap", session, db, prompt, error=True)
-        return
-
-    # ── ZAP results ──
-    if action == "results":
-        target = (action_data.get("target") or "").strip()
-        if not target:
-            yield from _static("No target URL provided for results retrieval.", "zap", session, db, prompt, error=True)
-            return
-        try:
-            alerts = get_results(target=target).get("alerts", [])
-        except Exception as e:
-            yield from _static(f"ZAP error: {e}\n\nMake sure OWASP ZAP is running on port 8080.", "zap", session, db, prompt, error=True)
-            return
-        if not alerts:
-            text = "No alerts found."
-        else:
-            lines = []
-            for a in alerts:
-                lines.append(
-                    f"\nName: {a.get('name')}\nRisk: {a.get('risk')}\n"
-                    f"Confidence: {a.get('confidence')}\nMethod: {a.get('method')}\n"
-                    f"URL: {a.get('url')}\nParameter: {a.get('param')}\nCWE: {a.get('cweid')}\n\n"
-                    f"Evidence:\n{a.get('evidence')}\n\nDescription:\n{a.get('description')}\n\n"
-                    f"Solution:\n{a.get('solution')}\n"
-                )
-            text = "\n".join(lines)
-        yield from _static(text, "zap", session, db, prompt)
-        return
-
     # ── help ──
     if action == "help":
         yield from _static(
@@ -225,9 +186,6 @@ def _agent_stream(prompt, session_id_in, model, attachments, user, db, api_key=N
             "**Nmap**\n"
             "- `run nmap against <host>` — service scan (-sV) against a host\n"
             "- `nmap <host> with flags <flags>` — custom nmap flags\n\n"
-            "**ZAP (OWASP)**\n"
-            "- `scan <url>` — start a ZAP spider + active scan\n"
-            "- `show zap results for <url>` — retrieve ZAP alerts for a URL\n\n"
             "**Acunetix — Targets**\n"
             "- `list all acunetix targets` — list every registered target\n"
             "- `get target <target_id>` — get details for a specific target\n\n"

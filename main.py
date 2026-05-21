@@ -11,7 +11,6 @@ from routes.admin import router as admin_router
 from routes.agent import router as agent_router
 from routes.auth import router as auth_router
 from routes.personalities import router as personalities_router
-from routes.scan import router as scan_router
 from routes.sessions import router as sessions_router
 
 app = FastAPI()
@@ -33,7 +32,7 @@ if ACUNETIX_ENABLED:
     app.include_router(acunetix_router)
 app.include_router(agent_router)
 app.include_router(personalities_router)
-app.include_router(scan_router)
+
 app.include_router(sessions_router)
 
 # Serve built React frontend if dist/ exists

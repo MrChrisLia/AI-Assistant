@@ -156,13 +156,7 @@ Possible actions:
 2. Run an nmap scan:
 {{"action":"nmap","target":"<ip or hostname>","flags":"<nmap flags>"}}
 
-3. START a ZAP scan:
-{{"action":"scan","target":"<url>"}}
-
-4. RETRIEVE EXISTING ZAP scan results:
-{{"action":"results","target":"<url>"}}
-
-5. List all Acunetix targets:
+3. List all Acunetix targets:
 {{"action":"acunetix_list_targets"}}
 
 6. Add a new Acunetix target:
@@ -212,7 +206,6 @@ Possible actions:
 
 Decision rules:
 
-- Use "scan" ONLY for ZAP scans. Use "acunetix_scan" for Acunetix scans.
 - Use "acunetix_list_targets" when user asks to list, show, or get Acunetix targets.
 - Use "acunetix_list_scans" when user asks to list or show Acunetix scans.
 - Use "acunetix_vulnerabilities" when user asks for ALL Acunetix vulnerabilities with no specific host.
@@ -228,7 +221,6 @@ Decision rules:
 - Use "acunetix_scan_vulnerabilities" when the user asks for vulnerabilities without a hostname — omit scan_id and result_id if not provided (defaults to latest).
 - NEVER ask the user for scan_id or result_id if they did not provide one — just omit the field.
 - Use "help" when the user asks what actions, functions, or commands are available (for any tool).
-- Use "results" ONLY for ZAP scan results.
 
 Examples:
 
@@ -315,14 +307,6 @@ Response:
 User: what scans have been run against 192.168.1.1
 Response:
 {{"action":"acunetix_host_scans","hostname":"192.168.1.1"}}
-
-User: scan https://testphp.vulnweb.com
-Response:
-{{"action":"scan","target":"https://testphp.vulnweb.com"}}
-
-User: show me the zap results for https://testphp.vulnweb.com
-Response:
-{{"action":"results","target":"https://testphp.vulnweb.com"}}
 
 User: run nmap against 10.10.10.10
 Response:
