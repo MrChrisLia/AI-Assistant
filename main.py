@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from config import ACUNETIX_ENABLED, MODEL_NAME
+from config import MODEL_NAME
 from database import init_db
 from routes.admin import router as admin_router
 from routes.agent import router as agent_router
@@ -27,9 +27,6 @@ init_db()
 
 app.include_router(auth_router)
 app.include_router(admin_router)
-if ACUNETIX_ENABLED:
-    from routes.acunetix import router as acunetix_router
-    app.include_router(acunetix_router)
 app.include_router(agent_router)
 app.include_router(personalities_router)
 

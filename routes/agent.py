@@ -7,10 +7,7 @@ from sqlalchemy.orm import Session
 
 import services.claude as claude_svc
 import services.gemini as gemini_svc
-from config import ACUNETIX_ENABLED, ANTHROPIC_API_KEY, CLAUDE_MODEL_NAME
-
-if ACUNETIX_ENABLED:
-    import services.acunetix as acx
+from config import ANTHROPIC_API_KEY, CLAUDE_MODEL_NAME
 from database import get_db
 from models import ChatSession, Message, User
 from services.auth import get_current_user
@@ -113,36 +110,6 @@ def _ai_stream(gen, tool, session, db, prompt):
 
 # ── main generator ────────────────────────────────────────────────────────────
 
-_RESTRICTED = {
-    "acunetix_add_target": (
-        "**Action Restricted — Manual Authorisation Required**\n\n"
-        "Adding a scan target modifies the Acunetix configuration and defines the scope "
-        "of future security assessments. Additionally, your Acunetix licence enforces a "
-        "maximum target capacity — adding targets without oversight risks exhausting the "
-        "available allowance.\n\n"
-        "To prevent unauthorised scope changes and unintended licence consumption, targets "
-        "must be added manually through the Acunetix console or directly via the "
-        "`POST /acunetix/targets` API endpoint with explicit authorisation."
-    ),
-    "acunetix_delete_target": (
-        "**Action Restricted — Manual Authorisation Required**\n\n"
-        "Deleting a target is an irreversible action that permanently removes the target and "
-        "all associated scan history, results, and vulnerability data from Acunetix. "
-        "To prevent accidental data loss, deletions must be performed manually through the "
-        "Acunetix console or directly via the `DELETE /acunetix/targets/{target_id}` API "
-        "endpoint with explicit authorisation."
-    ),
-    "acunetix_scan": (
-        "**Action Restricted — Manual Authorisation Required**\n\n"
-        "Initiating an Acunetix scan is a potentially disruptive operation that may generate "
-        "significant traffic against the target, trigger security controls, or impact the "
-        "availability of the scanned system.\n\n"
-        "For this reason, scans must be started manually through the Acunetix console or "
-        "directly via the `POST /acunetix/scans` API endpoint with explicit authorisation."
-    ),
-}
-
-
 def _agent_stream(prompt, session_id_in, model, attachments, user, db, api_key=None, system_prompt=None):
     svc = _get_svc(model, api_key)
     session = _get_or_create_session(db, user.id, session_id_in, prompt)
@@ -186,156 +153,10 @@ def _agent_stream(prompt, session_id_in, model, attachments, user, db, api_key=N
             "**Nmap**\n"
             "- `run nmap against <host>` — service scan (-sV) against a host\n"
             "- `nmap <host> with flags <flags>` — custom nmap flags\n\n"
-            "**Acunetix — Targets**\n"
-            "- `list all acunetix targets` — list every registered target\n"
-            "- `get target <target_id>` — get details for a specific target\n\n"
-            "**Acunetix — Scans**\n"
-            "- `show acunetix scans` — list all scans\n"
-            "- `show acunetix scan <scan_id>` — get details for a specific scan\n"
-            "- `abort scan <scan_id>` — stop a running scan\n"
-            "- `get results for scan <scan_id>` — list result sessions for a scan\n\n"
-            "**Acunetix — Vulnerabilities**\n"
-            "- `show acunetix vulnerabilities` — list all found vulnerabilities\n"
-            "- `show vulnerabilities for <hostname>` — vulnerabilities for the latest scan of a host\n"
-            "- `show vulnerabilities for scan <scan_id> result <result_id>` — vulnerabilities for a specific scan result\n\n"
-            "**Acunetix — By Hostname**\n"
-            "- `show vulnerabilities for <hostname>` — auto-resolves target and latest scan\n"
-            "- `show scans for <hostname>` — scan history for a host\n\n"
             "**General**\n"
             "- anything else — answered by the AI assistant\n",
             "system", session, db, prompt,
         )
-        return
-
-    # ── restricted actions ──
-    if action in _RESTRICTED:
-        yield from _static(_RESTRICTED[action], "acunetix", session, db, prompt, error=True)
-        return
-
-    # ── Acunetix data actions (streamed AI summarisation) ──
-    if action == "acunetix_list_targets":
-        try:
-            yield from _ai_stream(_stream_answer(svc, model, prompt, acx.list_targets(), api_key, system_prompt), "acunetix", session, db, prompt)
-        except Exception as e:
-            yield from _static(f"Acunetix error: {e}", "acunetix", session, db, prompt, error=True)
-        return
-
-    if action == "acunetix_get_target":
-        target_id = (action_data.get("target_id") or "").strip()
-        if not target_id:
-            yield from _static("No target_id provided.", "acunetix", session, db, prompt, error=True)
-        else:
-            try:
-                yield from _ai_stream(_stream_answer(svc, model, prompt, acx.get_target(target_id), api_key, system_prompt), "acunetix", session, db, prompt)
-            except Exception as e:
-                yield from _static(f"Acunetix error: {e}", "acunetix", session, db, prompt, error=True)
-        return
-
-    if action == "acunetix_list_scans":
-        try:
-            yield from _ai_stream(_stream_answer(svc, model, prompt, acx.list_scans(), api_key, system_prompt), "acunetix", session, db, prompt)
-        except Exception as e:
-            yield from _static(f"Acunetix error: {e}", "acunetix", session, db, prompt, error=True)
-        return
-
-    if action == "acunetix_get_scan":
-        scan_id = (action_data.get("scan_id") or "").strip() or None
-        try:
-            data = acx.get_scan(scan_id) if scan_id else acx.get_latest_scan()
-            yield from _ai_stream(_stream_answer(svc, model, prompt, data, api_key, system_prompt), "acunetix", session, db, prompt)
-        except Exception as e:
-            yield from _static(f"Acunetix error: {e}", "acunetix", session, db, prompt, error=True)
-        return
-
-    if action == "acunetix_abort_scan":
-        scan_id = (action_data.get("scan_id") or "").strip()
-        if not scan_id:
-            yield from _static("No scan_id provided to abort.", "acunetix", session, db, prompt, error=True)
-        else:
-            try:
-                acx.abort_scan(scan_id)
-                yield from _static(f"Scan {scan_id} aborted.", "acunetix", session, db, prompt)
-            except Exception as e:
-                yield from _static(f"Acunetix error: {e}", "acunetix", session, db, prompt, error=True)
-        return
-
-    if action == "acunetix_scan_results":
-        scan_id = (action_data.get("scan_id") or "").strip() or None
-        try:
-            yield from _ai_stream(_stream_answer(svc, model, prompt, acx.get_smart_scan_results(scan_id), api_key, system_prompt), "acunetix", session, db, prompt)
-        except Exception as e:
-            yield from _static(f"Acunetix error: {e}", "acunetix", session, db, prompt, error=True)
-        return
-
-    if action == "acunetix_scan_vulnerabilities":
-        scan_id = (action_data.get("scan_id") or "").strip() or None
-        result_id = (action_data.get("result_id") or "").strip() or None
-        try:
-            yield from _ai_stream(_stream_answer(svc, model, prompt, acx.get_smart_vulnerabilities(scan_id, result_id), api_key, system_prompt), "acunetix", session, db, prompt)
-        except Exception as e:
-            yield from _static(f"Acunetix error: {e}", "acunetix", session, db, prompt, error=True)
-        return
-
-    if action == "acunetix_vulnerabilities":
-        query = (action_data.get("q") or "").strip() or None
-        try:
-            yield from _ai_stream(_stream_answer(svc, model, prompt, acx.list_vulnerabilities(query=query), api_key, system_prompt), "acunetix", session, db, prompt)
-        except Exception as e:
-            yield from _static(f"Acunetix error: {e}", "acunetix", session, db, prompt, error=True)
-        return
-
-    if action == "acunetix_host_vulnerabilities":
-        hostname = (action_data.get("hostname") or "").strip()
-        if not hostname:
-            yield from _static("No hostname provided.", "acunetix", session, db, prompt, error=True)
-        else:
-            try:
-                yield from _ai_stream(_stream_answer(svc, model, prompt, acx.get_vulnerabilities_by_host(hostname), api_key, system_prompt), "acunetix", session, db, prompt)
-            except Exception as e:
-                yield from _static(f"Acunetix error: {e}", "acunetix", session, db, prompt, error=True)
-        return
-
-    if action == "acunetix_vuln_http":
-        vuln_id = (action_data.get("vuln_id") or "").strip() or None
-        hostname = (action_data.get("hostname") or "").strip() or None
-        vuln_name = (action_data.get("vuln_name") or "").strip() or None
-        try:
-            yield from _ai_stream(_stream_answer(svc, model, prompt, acx.find_vuln_with_http(hostname, vuln_name, vuln_id), api_key, system_prompt), "acunetix", session, db, prompt)
-        except Exception as e:
-            yield from _static(f"Acunetix error: {e}", "acunetix", session, db, prompt, error=True)
-        return
-
-    if action == "acunetix_current_scan_vulnerabilities":
-        hostname = (action_data.get("hostname") or "").strip()
-        if not hostname:
-            yield from _static("No hostname provided.", "acunetix", session, db, prompt, error=True)
-        else:
-            try:
-                yield from _ai_stream(_stream_answer(svc, model, prompt, acx.get_current_scan_vulnerabilities_for_host(hostname), api_key, system_prompt), "acunetix", session, db, prompt)
-            except Exception as e:
-                yield from _static(f"Acunetix error: {e}", "acunetix", session, db, prompt, error=True)
-        return
-
-    if action == "acunetix_host_vuln_details":
-        hostname = (action_data.get("hostname") or "").strip()
-        if not hostname:
-            yield from _static("No hostname provided.", "acunetix", session, db, prompt, error=True)
-        else:
-            try:
-                yield from _ai_stream(_stream_answer(svc, model, prompt, acx.get_host_vuln_details(hostname), api_key, system_prompt), "acunetix", session, db, prompt)
-            except Exception as e:
-                yield from _static(f"Acunetix error: {e}", "acunetix", session, db, prompt, error=True)
-        return
-
-    if action == "acunetix_host_scans":
-        hostname = (action_data.get("hostname") or "").strip()
-        if not hostname:
-            yield from _static("No hostname provided.", "acunetix", session, db, prompt, error=True)
-        else:
-            try:
-                yield from _ai_stream(_stream_answer(svc, model, prompt, acx.get_scans_by_host(hostname), api_key, system_prompt), "acunetix", session, db, prompt)
-            except Exception as e:
-                yield from _static(f"Acunetix error: {e}", "acunetix", session, db, prompt, error=True)
         return
 
     # ── default: general AI chat (fully streamed) ──

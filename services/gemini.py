@@ -150,85 +150,20 @@ Possible actions:
 1. General chat:
 {{"action":"chat"}}
 
-0. List all available commands/functions/actions (any tool, not just Acunetix):
+2. List all available commands:
 {{"action":"help"}}
 
-2. Run an nmap scan:
+3. Run an nmap scan:
 {{"action":"nmap","target":"<ip or hostname>","flags":"<nmap flags>"}}
 
-3. List all Acunetix targets:
-{{"action":"acunetix_list_targets"}}
-
-6. Add a new Acunetix target:
-{{"action":"acunetix_add_target","address":"<url>"}}
-
-7. List all Acunetix scans:
-{{"action":"acunetix_list_scans"}}
-
-8. Start an Acunetix scan against a target address (will add target if needed):
-{{"action":"acunetix_scan","address":"<url>"}}
-
-9. List all Acunetix vulnerabilities:
-{{"action":"acunetix_vulnerabilities"}}
-
-10. Get a specific Acunetix target by ID:
-{{"action":"acunetix_get_target","target_id":"<uuid>"}}
-
-11. Delete an Acunetix target by ID:
-{{"action":"acunetix_delete_target","target_id":"<uuid>"}}
-
-12. Get details of a scan (omit scan_id for the latest scan):
-{{"action":"acunetix_get_scan","scan_id":"<uuid or omit>"}}
-
-13. Abort a running Acunetix scan:
-{{"action":"acunetix_abort_scan","scan_id":"<uuid>"}}
-
-14. Get result sessions for a scan (omit scan_id for the latest scan):
-{{"action":"acunetix_scan_results","scan_id":"<uuid or omit>"}}
-
-15. Get vulnerabilities (omit IDs to get the latest scan's results automatically):
-{{"action":"acunetix_scan_vulnerabilities","scan_id":"<uuid or omit>","result_id":"<uuid or omit>"}}
-
-16. Get vulnerabilities for a host by hostname (auto-resolves target and latest scan — use when user provides a hostname/domain, not a UUID):
-{{"action":"acunetix_host_vulnerabilities","hostname":"<hostname or url>"}}
-
-17. Get scan history for a host by hostname:
-{{"action":"acunetix_host_scans","hostname":"<hostname or url>"}}
-
-18. Get vulnerabilities for the LATEST scan of a host (regardless of scan status — shows partial results if still running):
-{{"action":"acunetix_current_scan_vulnerabilities","hostname":"<hostname or url>"}}
-
-19. Get full vulnerability details for a host (includes HTTP request/response, description, remediation):
-{{"action":"acunetix_host_vuln_details","hostname":"<hostname or url>"}}
-
-20. Get HTTP request and response for a specific vulnerability (extract vuln_name and hostname from conversation context — look at the previous assistant message for URLs/hostnames and vulnerability names):
-{{"action":"acunetix_vuln_http","vuln_name":"<vulnerability name e.g. SQL Injection>","hostname":"<hostname extracted from previous URL in context>","vuln_id":"<uuid if explicitly given>"}}
-
 Decision rules:
-
-- Use "acunetix_list_targets" when user asks to list, show, or get Acunetix targets.
-- Use "acunetix_list_scans" when user asks to list or show Acunetix scans.
-- Use "acunetix_vulnerabilities" when user asks for ALL Acunetix vulnerabilities with no specific host.
-- Use "acunetix_host_vulnerabilities" when user asks for vulnerabilities for a specific hostname or domain.
-- Use "acunetix_host_scans" when user asks for scans for a specific hostname or domain.
-- Use "acunetix_current_scan_vulnerabilities" when user asks for vulnerabilities from the latest/current scan specifically, or asks what a running scan has found so far.
-- Use "acunetix_host_vuln_details" when user asks for full details, HTTP request/response, description, or remediation for vulnerabilities on a host.
-- Use "acunetix_vuln_http" when user asks for the HTTP request/response of a specific vulnerability — extract vuln_name from the vulnerability name mentioned and hostname from any URL visible in the recent conversation (e.g. if the previous message showed "https://qat-optimus-boapi.yjtech.tw/..." then hostname is "qat-optimus-boapi.yjtech.tw").
-- Use "acunetix_get_target" / "acunetix_delete_target" when a target_id UUID is mentioned.
-- Use "acunetix_get_scan" when the user wants scan details — omit scan_id if no ID is given (defaults to latest).
-- Use "acunetix_abort_scan" when the user wants to stop or abort a scan (scan_id required).
-- Use "acunetix_scan_results" when the user asks for scan result sessions — omit scan_id if not provided.
-- Use "acunetix_scan_vulnerabilities" when the user asks for vulnerabilities without a hostname — omit scan_id and result_id if not provided (defaults to latest).
-- NEVER ask the user for scan_id or result_id if they did not provide one — just omit the field.
-- Use "help" when the user asks what actions, functions, or commands are available (for any tool).
+- Use "nmap" when the user asks to scan, probe, or enumerate a host/IP.
+- Use "help" when the user asks what commands or actions are available.
+- Use "chat" for everything else.
 
 Examples:
 
-User: what acunetix functions are available
-Response:
-{{"action":"help"}}
-
-User: what can you do with acunetix
+User: help
 Response:
 {{"action":"help"}}
 
@@ -236,81 +171,13 @@ User: what can you do
 Response:
 {{"action":"help"}}
 
-User: help
-Response:
-{{"action":"help"}}
-
-User: what functions are available
-Response:
-{{"action":"help"}}
-
-User: list all acunetix targets
-Response:
-{{"action":"acunetix_list_targets"}}
-
-User: show me acunetix targets
-Response:
-{{"action":"acunetix_list_targets"}}
-
-User: get all targets
-Response:
-{{"action":"acunetix_list_targets"}}
-
-User: add https://example.com to acunetix
-Response:
-{{"action":"acunetix_add_target","address":"https://example.com"}}
-
-User: acunetix scan https://example.com
-Response:
-{{"action":"acunetix_scan","address":"https://example.com"}}
-
-User: show acunetix vulnerabilities
-Response:
-{{"action":"acunetix_vulnerabilities"}}
-
-User: get target abc-123
-Response:
-{{"action":"acunetix_get_target","target_id":"abc-123"}}
-
-User: delete acunetix target abc-123
-Response:
-{{"action":"acunetix_delete_target","target_id":"abc-123"}}
-
-User: show acunetix scan abc-123
-Response:
-{{"action":"acunetix_get_scan","scan_id":"abc-123"}}
-
-User: abort scan abc-123
-Response:
-{{"action":"acunetix_abort_scan","scan_id":"abc-123"}}
-
-User: get results for scan abc-123
-Response:
-{{"action":"acunetix_scan_results","scan_id":"abc-123"}}
-
-User: show vulnerabilities for scan abc-123 result def-456
-Response:
-{{"action":"acunetix_scan_vulnerabilities","scan_id":"abc-123","result_id":"def-456"}}
-
-User: show vulnerabilities for example.com
-Response:
-{{"action":"acunetix_host_vulnerabilities","hostname":"example.com"}}
-
-User: what vulnerabilities were found on testphp.vulnweb.com
-Response:
-{{"action":"acunetix_host_vulnerabilities","hostname":"testphp.vulnweb.com"}}
-
-User: show scans for example.com
-Response:
-{{"action":"acunetix_host_scans","hostname":"example.com"}}
-
-User: what scans have been run against 192.168.1.1
-Response:
-{{"action":"acunetix_host_scans","hostname":"192.168.1.1"}}
-
 User: run nmap against 10.10.10.10
 Response:
 {{"action":"nmap","target":"10.10.10.10","flags":"-sV"}}
+
+User: scan 192.168.1.1 with -A flag
+Response:
+{{"action":"nmap","target":"192.168.1.1","flags":"-A"}}
 
 Rules:
 - Default nmap flags: -sV

@@ -9,9 +9,6 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 if not GEMINI_API_KEY:
     raise RuntimeError("GEMINI_API_KEY environment variable is not set.")
 
-ACUNETIX_URL = os.getenv("ACUNETIX_URL", "")
-ACUNETIX_API_KEY = os.getenv("ACUNETIX_API_KEY", "")
-ACUNETIX_ENABLED = bool(ACUNETIX_URL and ACUNETIX_API_KEY)
 
 JWT_SECRET = os.getenv("JWT_SECRET")
 if not JWT_SECRET:
