@@ -3,10 +3,15 @@ import shlex
 import subprocess
 
 _TARGET_RE = re.compile(r'^[a-zA-Z0-9._:,/\*\[\]-]+$')
+_BLOCKED = re.compile(r'^(127\.|0\.0\.0\.0|::1|localhost)([\s:/]|$)', re.IGNORECASE)
 
 def validate_target(target: str) -> bool:
     target = target.strip()
-    return bool(target) and not target.startswith('-') and bool(_TARGET_RE.match(target))
+    if not target or target.startswith('-'):
+        return False
+    if _BLOCKED.match(target):
+        return False
+    return bool(_TARGET_RE.match(target))
 
 ALLOWED_FLAGS = {
     "-sV", "-sC", "-sS", "-sT", "-sU", "-sn", "-Pn",
