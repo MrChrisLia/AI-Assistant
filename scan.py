@@ -1,8 +1,10 @@
 import os
+import re
 import subprocess
-import sys
+import time
 
 from google import genai
+from google.genai import errors as genai_errors
 from google.genai import types
 
 SCANNED_EXTENSIONS = {".py", ".ts", ".tsx", ".js"}
@@ -47,17 +49,26 @@ def scan(diff: str) -> str:
         f"```diff\n{diff}\n```"
     )
 
-    response = client.models.generate_content(
-        model="gemini-2.0-flash",
-        contents=prompt,
-        config=types.GenerateContentConfig(
-            system_instruction=(
-                "You are a security code reviewer. Be concise. "
-                "Only report real, confirmed issues — not theoretical ones."
-            ),
-        ),
-    )
-    return response.text
+    for attempt in range(3):
+        try:
+            response = client.models.generate_content(
+                model="gemini-2.0-flash",
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    system_instruction=(
+                        "You are a security code reviewer. Be concise. "
+                        "Only report real, confirmed issues — not theoretical ones."
+                    ),
+                ),
+            )
+            return response.text
+        except genai_errors.ClientError as e:
+            if e.status_code != 429 or attempt == 2:
+                raise
+            match = re.search(r'retry in (\d+(?:\.\d+)?)s', str(e))
+            delay = float(match.group(1)) + 2 if match else 30
+            print(f"Rate limited. Retrying in {delay:.0f}s...")
+            time.sleep(delay)
 
 
 def write_summary(text: str):
