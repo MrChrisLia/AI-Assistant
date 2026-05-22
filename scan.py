@@ -12,6 +12,7 @@ MAX_DIFF_CHARS = 30000
 EMPTY_TREE = "4b825dc642cb6eb9a060e54bf8d69288fbee4904"
 
 client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
+MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.1-flash-lite")
 
 
 def get_diff(before: str, after: str) -> str:
@@ -49,11 +50,11 @@ def scan(diff: str) -> str:
         f"```diff\n{diff}\n```"
     )
 
-    print("Scanning with gemini-3.0-flash...")
+    print("Scanning with MODEL...")
     for attempt in range(3):
         try:
             response = client.models.generate_content(
-                model="gemini-3.0-flash",
+                model="MODEL",
                 contents=prompt,
                 config=types.GenerateContentConfig(
                     system_instruction=(
