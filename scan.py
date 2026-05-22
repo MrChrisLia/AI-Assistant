@@ -49,10 +49,11 @@ def scan(diff: str) -> str:
         f"```diff\n{diff}\n```"
     )
 
+    print("Scanning with gemini-3.0-flash...")
     for attempt in range(3):
         try:
             response = client.models.generate_content(
-                model="gemini-2.0-flash",
+                model="gemini-3.0-flash",
                 contents=prompt,
                 config=types.GenerateContentConfig(
                     system_instruction=(
